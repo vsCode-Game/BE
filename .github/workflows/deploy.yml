@@ -45,20 +45,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. SSH 키 권한 설정
+      # SSH 키 설정 (권한 부여)
       - name: Configure SSH Key
         run: |
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
-          chmod 600 private_key.pem
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
-      # 2. 서버에 SSH로 접속하고 파일 복사
+      # SCP로 애플리케이션 파일만 전송
       - name: Deploy via SCP
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: '.'
+          source: './src ./package.json ./Dockerfile' # 필요한 파일만 지정
           target: '/home/${{ secrets.SERVER_USER }}/app'
 
       # 3. 서버에서 Docker 컨테이너 실행
