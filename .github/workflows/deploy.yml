@@ -55,9 +55,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/ubuntu 
-            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/nestjs-app:${{ github.sha }}
-            docker-compose down
-            docker-compose up -d
+            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/nestjs-app:latest
+            sudo docker-compose down
+            sudo docker-compose up -d
             docker image prune —f
             echo "=== Docker 컨테이너 상태 ==="
             docker-compose ps
