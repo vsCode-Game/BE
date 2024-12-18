@@ -45,23 +45,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # SSH 키 설정 (권한 부여)
+      # 1. SSH 키 권한 설정
       - name: Configure SSH Key
         run: |
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
 
-      # SCP로 애플리케이션 파일만 전송
+      # 2. 원격 서버에 타겟 디렉토리 생성
+      - name: Create Target Directory on Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p /home/${{ secrets.SERVER_USER }}/app
+
+      # 3. 서버에 SSH로 접속하고 파일 복사
       - name: Deploy via SCP
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: './src ./package.json ./Dockerfile' # 필요한 파일만 지정
+          source: './'
           target: '/home/${{ secrets.SERVER_USER }}/app'
 
-      # 3. 서버에서 Docker 컨테이너 실행
+      # 4. 서버에서 Docker 컨테이너 실행
       - name: Run Docker Container on Server
         uses: appleboy/ssh-action@master
         with:
@@ -75,7 +85,7 @@ jobs:
             docker rm nestjs-container || true
             docker run -d --name nestjs-container -p 3000:3000 ${{ secrets.DOCKER_HUB_USERNAME }}/nestjs-app:latest
 
-      # 4. Docker 컨테이너 상태 확인
+      # 5. Docker 컨테이너 상태 확인
       - name: Check Docker Container Status
         uses: appleboy/ssh-action@master
         with:
