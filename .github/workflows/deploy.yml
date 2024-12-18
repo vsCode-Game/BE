@@ -60,4 +60,4 @@ jobs:
             sudo docker-compose up -d
             docker image prune —f
             echo "=== Docker 컨테이너 상태 ==="
-            docker-compose ps
+            sudo docker-compose ps
