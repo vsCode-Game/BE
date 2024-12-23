@@ -30,7 +30,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./
-          file: ./Dockerfile
+          file: ./Dockerfile.product
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/nestjs-app:${{ github.sha }}
 
