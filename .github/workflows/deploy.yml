@@ -55,7 +55,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/ubuntu 
-            echo "${{ secrets.ENV_PRODUCTION }}" > .env.production
+            echo "${{ secrets.ENV_PRODUCTION }}" > .env
             docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/nestjs-app:latest
             sudo docker-compose down
             sudo docker-compose up -d

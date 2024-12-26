@@ -13,11 +13,8 @@ RUN npm install
 # 5. 소스 코드 복사
 COPY . .
 
-# 6. NestJS 애플리케이션 빌드 (TypeScript → JavaScript)
-RUN npm run start:dev
-
 # 7. 실행 명령어 설정
-CMD ["node", "dist/main"]
+CMD ["npm", "run", "start:dev"]
 
 # 8. 애플리케이션 실행에 사용할 포트 노출
 EXPOSE 3000
