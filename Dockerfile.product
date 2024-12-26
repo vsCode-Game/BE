@@ -11,6 +11,8 @@ COPY package*.json ./
 RUN npm install
 
 # 5. 소스 코드 복사
+# 코드가 하나라도 변경되면 캐싱 무력화
+# COPY 바뀔 확률이 낮은 파일들만 
 COPY . .
 
 # 6. NestJS 애플리케이션 빌드 (TypeScript → JavaScript)
