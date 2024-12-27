@@ -8,7 +8,11 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
   @Post('signup')
   async signup(@Body() signupData: SingupUserDto): Promise<User> {
-    this.userService.create(signupData.name, signupData.password);
+    this.userService.createUser(
+      signupData.userEmail,
+      signupData.userNickname,
+      signupData.password,
+    );
     return;
   }
 }
