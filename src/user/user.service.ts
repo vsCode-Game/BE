@@ -11,15 +11,15 @@ export class UserService {
     private userRepository: Repository<User>,
   ) {}
 
-  async findEmailDplct(userEmail: string): Promise<User | undefined> {
-    return this.userRepository.findOne({ where: { userEmail } });
+  async findEmailDplct(userEmail: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { userEmail } }) || null;
   }
 
-  async findNicknameDplct(userNickname: string): Promise<User | undefined> {
-    return this.userRepository.findOne({ where: { userNickname } });
+  async findNicknameDplct(userNickname: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { userNickname } }) || null;
   }
 
-  async createUser(
+  async create(
     userEmail: string,
     userNickname: string,
     password: string,
@@ -27,7 +27,10 @@ export class UserService {
     // 이메일 중복 확인
     const existingUser = await this.findEmailDplct(userEmail);
     if (existingUser) {
-      throw new BadRequestException('Email already in use');
+      throw new BadRequestException({
+        status: 400,
+        message: 'Email already in use',
+      });
     }
 
     const salt = await bcrypt.genSalt();
@@ -46,6 +49,6 @@ export class UserService {
     if (user && (await bcrypt.compare(pass, user.password))) {
       return user;
     }
-    return;
+    return null;
   }
 }

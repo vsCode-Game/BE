@@ -1,16 +1,16 @@
 import { IsString, IsEmail, Matches } from 'class-validator';
 
 export default class SingupUserDto {
-  @IsEmail({}, { message: 'Invalid email format' })
-  readonly userEmail: string;
+  @IsEmail({}, { message: '이메일 형식이 틀렸습니다.' })
+  userEmail: string;
 
   @IsString()
   readonly userNickname: string;
 
   @IsString()
-  @Matches(
-    /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-    { message: 'Password too weak' },
-  )
+  @Matches(/^(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, {
+    message:
+      '비밀번호는 알파벳, 숫자, 특수문자를 포함하여 8글자 이상 작성해주세요',
+  })
   readonly password: string;
 }
