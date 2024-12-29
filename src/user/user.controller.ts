@@ -1,5 +1,4 @@
 import { Body, Controller, Post, BadRequestException } from '@nestjs/common';
-import { User } from './user.entity';
 import { UserService } from './user.service';
 import SingupUserDto from './user.dto';
 import { validateOrReject } from 'class-validator';
@@ -9,13 +8,16 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post('signup')
-  async signup(@Body() signupData: SingupUserDto): Promise<User> {
+  async signup(
+    @Body() signupData: SingupUserDto,
+  ): Promise<{ message: string }> {
     try {
-      return this.userService.create(
+      await this.userService.create(
         signupData.userEmail,
         signupData.userNickname,
         signupData.password,
       );
+      return { message: 'User created successfully' };
     } catch (error) {
       throw new BadRequestException({
         status: 400,
@@ -24,8 +26,7 @@ export class UserController {
     }
   }
 
-  @Post('email/check')
-  async checkEmail(
+  @Post('email/check') async checkEmail(
     @Body('userEmail') userEmail: string,
   ): Promise<{ available: boolean }> {
     try {

@@ -44,11 +44,11 @@ export class UserService {
     return this.userRepository.save(newUser);
   }
 
-  async validateUser(userNickname: string, pass: string): Promise<User | null> {
-    const user = await this.findNicknameDplct(userNickname);
+  async validateUser(userEmail: string, pass: string): Promise<User | null> {
+    const user = await this.findEmailDplct(userEmail); // 이메일로 유저 검색
     if (user && (await bcrypt.compare(pass, user.password))) {
-      return user;
+      return user; // 유저가 존재하고 비밀번호가 일치하면 유저 반환
     }
-    return null;
+    return null; // 검증 실패
   }
 }
