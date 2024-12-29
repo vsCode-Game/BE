@@ -7,9 +7,9 @@ export class RedisService {
 
   constructor() {
     this.redis = new Redis({
-      host: 'redis', // Redis 서버 호스트
-      port: 6379, // Redis 서버 포트
-      password: 'strongpassword',
+      host: process.env.REDIS_HOST || 'redis',
+      port: parseInt(process.env.REDIS_PORT, 10) || 6379,
+      password: process.env.REDIS_PASSWORD || '',
     });
   }
 
