@@ -14,7 +14,7 @@ import { RedisModule } from 'src/redis/redis.module';
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET, // 환경 변수로 관리 추천
-      signOptions: { expiresIn: '1h' },
+      signOptions: { expiresIn: '1d' },
     }),
     RedisModule,
   ],
