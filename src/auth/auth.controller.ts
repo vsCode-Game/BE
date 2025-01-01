@@ -50,8 +50,8 @@ export class AuthController {
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true, // JavaScript로 접근 불가
-      secure: false, // HTTPS에서만 동작 (로컬 개발 시 false로 설정)
-      sameSite: 'lax', // 일반 로그인
+      secure: true, // HTTPS에서만 동작 (로컬 개발 시 false로 설정)
+      sameSite: 'none', // 일반 로그인
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
     });
 
