@@ -7,6 +7,8 @@ WORKDIR /usr/src/app/
 # 3. 의존성 파일(package.json 및 package-lock.json) 복사
 COPY package*.json ./
 
+COPY .env ./
+
 # 4. npm 패키지 설치
 RUN npm install
 

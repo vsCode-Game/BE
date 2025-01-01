@@ -1,6 +1,6 @@
 services:
   app:
-    image: hoheesu/nestjs-app:latest
+    image: nestjs-app:latest
     env_file:
       - .env
     ports:

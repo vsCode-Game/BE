@@ -17,6 +17,10 @@ jobs:
       - name: 리포지토리 코드 체크아웃
         uses: actions/checkout@v3
 
+      - name: .env복사
+        run: |
+          echo "${{ secrets.ENV_PRODUCTION }}" > ./.env
+
       - name: Docker Buildx 설정
         uses: docker/setup-buildx-action@v2
 
@@ -32,7 +36,7 @@ jobs:
           context: ./
           file: ./Dockerfile.product
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/nestjs-app:${{ github.sha }}
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/nestjs-app:latest
 
   deploy:
     name: 서버 배포
@@ -56,9 +60,10 @@ jobs:
           script: |
             cd /home/ubuntu 
             echo "${{ secrets.ENV_PRODUCTION }}" > .env
-            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/nestjs-app:latest
-            sudo docker-compose down
-            sudo docker-compose up -d
+            docker-compose down
+            docker system prune -a --volumes -f
+            docker-compose pull
+            docker-compose up -d
             docker image prune —f
             echo "=== Docker 컨테이너 상태 ==="
-            sudo docker-compose ps
+            docker-compose ps
