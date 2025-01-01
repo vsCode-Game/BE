@@ -6,7 +6,7 @@ import { env } from 'process';
 import { UserModule } from 'src/user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
-import { ChatModule } from './chat/chat.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -23,7 +23,7 @@ import { ChatModule } from './chat/chat.module';
       autoLoadEntities: true,
       synchronize: true,
     }),
-    ChatModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
