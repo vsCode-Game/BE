@@ -7,8 +7,10 @@ import {
   UseGuards,
   Get,
   Res,
+  Req,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import LoginUserDto from './auth.dto';
@@ -62,5 +64,49 @@ export class AuthController {
   @Get('profile')
   getProfile() {
     return { message: 'This is a protected route' };
+  }
+
+  @Post('refresh')
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken = req.cookies['refreshToken']; // 쿠키에서 RefreshToken 읽기
+
+    if (!refreshToken) {
+      throw new HttpException(
+        'Refresh token not found',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    try {
+      // RefreshToken 검증
+      const payload = this.jwtService.verify(refreshToken);
+
+      // Redis에서 RefreshToken 확인
+      const storedRefreshToken = await this.redisService.get(
+        `refresh:${payload.userEmail}`,
+      );
+
+      if (!storedRefreshToken || storedRefreshToken !== refreshToken) {
+        throw new HttpException(
+          'Invalid refresh token',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      // 새로운 AccessToken 생성
+      const newAccessToken = this.jwtService.sign(
+        { userEmail: payload.userEmail, sub: payload.sub },
+        { expiresIn: '15m' },
+      );
+
+      return {
+        accessToken: `Bearer ${newAccessToken}`,
+      };
+    } catch (err) {
+      throw new HttpException('Invalid refresh token', HttpStatus.UNAUTHORIZED);
+    }
   }
 }

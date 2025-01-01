@@ -6,8 +6,8 @@ import * as cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();
-  app.useGlobalPipes(new ValidationPipe());
   app.use(cookieParser()); // 쿠키 파서 사용
+  app.useGlobalPipes(new ValidationPipe());
 
   // 라우트 디버깅 활성화
   const server = app.getHttpAdapter();
