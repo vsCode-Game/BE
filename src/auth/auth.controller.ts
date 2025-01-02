@@ -13,7 +13,7 @@ import { Response } from 'express';
 import { Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
-import LoginUserDto from './auth.dto';
+import LoginUserDto from './dto/auth.dto';
 import { JwtAuthGuard } from './auth.guard';
 import { RedisService } from 'src/redis/redis.service';
 
