@@ -17,6 +17,10 @@ import LoginUserDto from './dto/auth.dto';
 import { RedisAuthGuard } from './auth.guard';
 import { RedisService } from 'src/redis/redis.service';
 
+
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+@ApiTags('auth')
+        
 @Controller('auth')
 export class AuthController {
   constructor(

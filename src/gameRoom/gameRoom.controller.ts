@@ -11,6 +11,10 @@ import {
 import { GameRoomService } from './gameRoom.service';
 import { RedisAuthGuard } from 'src/auth/auth.guard';
 
+
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+@ApiTags('gameRoom')
+            
 @Controller('gameRoom')
 @UseGuards(RedisAuthGuard) // 컨트롤러 전체에 Guard 적용
 export class GameRoomController {
