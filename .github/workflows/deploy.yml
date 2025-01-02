@@ -58,12 +58,11 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/ubuntu 
+            cd /home/ubuntu
             echo "${{ secrets.ENV_PRODUCTION }}" > .env
             docker-compose down
-            docker system prune -a --volumes -f
-            docker-compose pull
-            docker-compose up -d
-            docker image prune —f
+            docker-compose pull  # 필요한 경우에만 업데이트
+            docker-compose up -d --build  # 필요한 서비스만 다시 빌드
+            docker image prune -f  # 사용하지 않는 이미지 삭제
             echo "=== Docker 컨테이너 상태 ==="
             docker-compose ps
