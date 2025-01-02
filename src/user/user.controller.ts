@@ -1,8 +1,10 @@
 import { Body, Controller, Post, BadRequestException } from '@nestjs/common';
 import { UserService } from './user.service';
-import SingupUserDto from './user.dto';
+import SingupUserDto from './dto/user.dto';
 import { validateOrReject } from 'class-validator';
 
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+@ApiTags('user')
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}

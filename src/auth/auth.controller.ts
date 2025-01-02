@@ -13,10 +13,14 @@ import { Response } from 'express';
 import { Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
-import LoginUserDto from './auth.dto';
-import { JwtAuthGuard } from './auth.guard';
+import LoginUserDto from './dto/auth.dto';
+import { RedisAuthGuard } from './auth.guard';
 import { RedisService } from 'src/redis/redis.service';
 
+
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+@ApiTags('auth')
+        
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -38,7 +42,7 @@ export class AuthController {
       throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
     }
 
-    const payload = { userEmail: user.userEmail, sub: user.id };
+    const payload = { userEmail: user.userEmail, userId: user.id };
     const accessToken = this.jwtService.sign(payload, { expiresIn: '2h' });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
     await this.redisService.set(`access:${user.userEmail}`, accessToken, 3600);
@@ -60,7 +64,7 @@ export class AuthController {
     };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(RedisAuthGuard)
   @Get('profile')
   getProfile() {
     return { message: 'This is a protected route' };
