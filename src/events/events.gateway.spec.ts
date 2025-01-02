@@ -15,7 +15,7 @@ describe('WebSocket Gateway Test', () => {
     app = moduleFixture.createNestApplication();
     await app.listen(3000);
 
-    clientSocket = io('ws://localhost:8081/chat');
+    clientSocket = io('ws://localhost:8080/chat');
   });
 
   afterAll(async () => {
