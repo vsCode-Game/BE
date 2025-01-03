@@ -11,7 +11,7 @@ import {
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 
-@WebSocketGateway(3000, {
+@WebSocketGateway({
   namespace: 'chat',
   cors: { origin: '*' },
 })
