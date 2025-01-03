@@ -11,7 +11,7 @@ import {
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 
-@WebSocketGateway(8080, {
+@WebSocketGateway(3000, {
   namespace: 'chat',
   cors: { origin: '*' },
 })
@@ -29,6 +29,7 @@ export class EventsGateway
     this.logger.log(
       `Socket.IO 서버 객체: ${this.server ? '정상 연결됨' : '연결 실패'}`,
     );
+    console.log('WebSocket Server listening on port 8080 with namespace /chat'); // 디버깅 로그 추가
     console.log('웹소켓 서버가 초기화되었습니다.');
   }
 

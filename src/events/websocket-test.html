@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebSocket Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      #messages {
+        border: 1px solid #ccc;
+        padding: 10px;
+        height: 200px;
+        overflow-y: scroll;
+        margin-bottom: 10px;
+      }
+      #messages div {
+        margin-bottom: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>WebSocket Test</h1>
+
+    <div id="messages"></div>
+
+    <input type="text" id="room" placeholder="Enter room name" />
+    <button id="joinRoom">Join Room</button>
+    <button id="leaveRoom">Leave Room</button>
+
+    <br /><br />
+
+    <input type="text" id="message" placeholder="Enter message" />
+    <button id="sendMessage">Send Message</button>
+
+    <script>
+      const socket = io('ws://localhost:3000/chat'); // WebSocket 서버 URL
+
+      const messagesDiv = document.getElementById('messages');
+      const roomInput = document.getElementById('room');
+      const messageInput = document.getElementById('message');
+
+      // WebSocket 이벤트 핸들러
+      socket.on('connect', () => {
+        logMessage(`✅ Connected to server (ID: ${socket.id})`);
+      });
+
+      socket.on('message', (data) => {
+        logMessage(`📩 Message received: ${JSON.stringify(data)}`);
+      });
+
+      socket.on('error', (data) => {
+        logMessage(`❌ Error: ${JSON.stringify(data)}`);
+      });
+
+      // Join Room
+      document.getElementById('joinRoom').addEventListener('click', () => {
+        const room = roomInput.value;
+        if (!room) {
+          alert('Please enter a room name.');
+          return;
+        }
+        socket.emit('joinRoom', { room });
+      });
+
+      // Leave Room
+      document.getElementById('leaveRoom').addEventListener('click', () => {
+        const room = roomInput.value;
+        if (!room) {
+          alert('Please enter a room name.');
+          return;
+        }
+        socket.emit('leaveRoom', { room });
+      });
+
+      // Send Message
+      document.getElementById('sendMessage').addEventListener('click', () => {
+        const room = roomInput.value;
+        const message = messageInput.value;
+        if (!room || !message) {
+          alert('Please enter both room name and message.');
+          return;
+        }
+        socket.emit('sendMessage', { room, message });
+        logMessage(`📤 Message sent: ${message}`);
+      });
+
+      // 메시지 출력 함수
+      function logMessage(message) {
+        const div = document.createElement('div');
+        div.textContent = message;
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight; // 스크롤 하단으로 이동
+      }
+    </script>
+
+    <!-- Socket.IO 클라이언트 라이브러리 -->
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+  </body>
+</html>
