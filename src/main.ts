@@ -15,7 +15,15 @@ async function bootstrap() {
     .setTitle('API Documentation')
     .setDescription('The API description')
     .setVersion('1.0')
-    .addTag('auth') // 원하는 태그를 추가
+    .addBearerAuth(
+      // Swagger에 Bearer 토큰 설정 추가
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT', // JWT 사용 시 명시
+      },
+      'access-token', // 키 이름 (선택 사항)
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

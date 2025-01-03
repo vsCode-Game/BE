@@ -30,10 +30,37 @@ import { GetRoomStatusResponseDto } from './dto/getRoomStatusRespose.dto';
 
 @ApiTags('gameRoom')
 @Controller('gameRoom')
-@UseGuards(RedisAuthGuard) // 컨트롤러 전체에 Guard 적용
 export class GameRoomController {
   constructor(private readonly gameRoomService: GameRoomService) {}
 
+  @Get('all')
+  @ApiOperation({ summary: '전체 방 리스트 조회' })
+  @ApiResponse({
+    status: 200,
+    description: '전체 방 리스트를 배열 형태로 반환',
+    schema: {
+      example: [
+        {
+          id: 1,
+          roomName: '테스트방1',
+          maxPlayers: 2,
+          currentCount: 1,
+          createdAt: '2025-01-02T10:00:00.000Z',
+        },
+        {
+          id: 2,
+          roomName: '테스트방2',
+          maxPlayers: 2,
+          currentCount: 2,
+          createdAt: '2025-01-02T11:00:00.000Z',
+        },
+      ],
+    },
+  })
+  async getAllRooms() {
+    return await this.gameRoomService.getAllRooms();
+  }
+  @UseGuards(RedisAuthGuard) // 컨트롤러 전체에 Guard 적용
   @Post('create')
   @ApiOperation({ summary: '방 생성과 동시에 참가' })
   @ApiBody({ type: CreateGameRoomDto })
@@ -62,6 +89,7 @@ export class GameRoomController {
     }
   }
 
+  @UseGuards(RedisAuthGuard) // 컨트롤러 전체에 Guard 적용
   @Post('join/:roomId')
   @ApiOperation({ summary: '방 참가' })
   @ApiParam({ name: 'roomId', type: Number, description: '참가할 게임 방 ID' })
@@ -104,6 +132,7 @@ export class GameRoomController {
     }
   }
 
+  @UseGuards(RedisAuthGuard) // 컨트롤러 전체에 Guard 적용
   @Delete('leave/:roomId')
   @ApiOperation({ summary: '방 나가기' })
   @ApiParam({ name: 'roomId', type: Number, description: '나갈 게임 방 ID' })

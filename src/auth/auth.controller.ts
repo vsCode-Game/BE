@@ -40,19 +40,6 @@ export class AuthController {
     summary: '로그인',
     description: '이메일, 패스워드를 이용한 로그인',
   })
-  @ApiBody({
-    description: '로그인 시 필요한 필드',
-    type: LoginUserDto,
-    examples: {
-      example1: {
-        summary: '기본 예시',
-        value: {
-          userEmail: 'test@example.com',
-          password: 'password123',
-        },
-      },
-    },
-  })
   @ApiResponse({
     status: 200,
     description:

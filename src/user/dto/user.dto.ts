@@ -4,7 +4,7 @@ import { IsString, IsEmail, Matches, IsNotEmpty } from 'class-validator';
 export default class SingupUserDto {
   @ApiProperty({
     required: true,
-    example: 'example@email.com',
+    example: 'test@email.com',
     description: '이메일',
   })
   @IsEmail({}, { message: '이메일 형식이 틀렸습니다.' })
@@ -13,7 +13,7 @@ export default class SingupUserDto {
 
   @ApiProperty({
     required: true,
-    example: 'example nickname',
+    example: 'exampleNickname',
     description: '닉네임',
   })
   @IsString()

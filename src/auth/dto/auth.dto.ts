@@ -4,7 +4,7 @@ import { IsString, IsEmail, Matches, IsNotEmpty } from 'class-validator';
 export default class LoginUserDto {
   @ApiProperty({
     required: true,
-    example: 'example@email.aaa',
+    example: 'test@email.com',
     description: '이메일',
   })
   @IsEmail({}, { message: '이메일 형식이 틀렸습니다.' })
