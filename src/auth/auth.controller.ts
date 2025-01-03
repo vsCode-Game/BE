@@ -1,3 +1,5 @@
+// auth.controller.ts
+
 import {
   Controller,
   Post,
@@ -9,18 +11,22 @@ import {
   Res,
   Req,
 } from '@nestjs/common';
-import { Response } from 'express';
-import { Request } from 'express';
+import { Response, Request } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import LoginUserDto from './dto/auth.dto';
 import { RedisAuthGuard } from './auth.guard';
 import { RedisService } from 'src/redis/redis.service';
 
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 @ApiTags('auth')
-        
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -30,6 +36,30 @@ export class AuthController {
   ) {}
 
   @Post('login')
+  @ApiOperation({
+    summary: '로그인',
+    description: '이메일, 패스워드를 이용한 로그인',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      '로그인 성공 시 Access Token(헤더), Refresh Token(쿠키)을 발급합니다.',
+    schema: {
+      example: {
+        accessToken: 'Bearer <JWT_TOKEN_HERE>',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: '이메일 또는 비밀번호가 잘못된 경우',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Invalid credentials',
+      },
+    },
+  })
   async login(
     @Body() loginDto: LoginUserDto,
     @Res({ passthrough: true }) res: Response,
@@ -45,6 +75,7 @@ export class AuthController {
     const payload = { userEmail: user.userEmail, userId: user.id };
     const accessToken = this.jwtService.sign(payload, { expiresIn: '2h' });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+
     await this.redisService.set(`access:${user.userEmail}`, accessToken, 3600);
     await this.redisService.set(
       `refresh:${user.userEmail}`,
@@ -54,8 +85,8 @@ export class AuthController {
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true, // JavaScript로 접근 불가
-      secure: true, // HTTPS에서만 동작 (로컬 개발 시 false로 설정)
-      sameSite: 'none', // 일반 로그인
+      secure: true, // HTTPS에서만 동작 (개발시엔 false로 설정)
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
     });
 
@@ -66,17 +97,63 @@ export class AuthController {
 
   @UseGuards(RedisAuthGuard)
   @Get('profile')
+  @ApiOperation({
+    summary: '프로필 조회(Protected)',
+    description: '로그인이 필요한 프로필 조회 API',
+  })
+  @ApiBearerAuth() // Swagger에서 Bearer Token 헤더를 입력할 수 있도록 표시
+  @ApiResponse({
+    status: 200,
+    description: '정상적으로 접근한 경우',
+    schema: {
+      example: {
+        message: 'This is a protected route',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: '권한이 없거나 토큰이 만료된 경우',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+      },
+    },
+  })
   getProfile() {
     return { message: 'This is a protected route' };
   }
 
   @Post('refresh')
+  @ApiOperation({
+    summary: 'Access Token 갱신',
+    description: 'Refresh Token을 통해 새로운 Access Token을 발급받습니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '새로운 Access Token을 발급합니다.',
+    schema: {
+      example: {
+        accessToken: 'Bearer <NEW_ACCESS_TOKEN>',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Refresh Token이 없거나 올바르지 않은 경우',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Invalid refresh token',
+      },
+    },
+  })
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const refreshToken = req.cookies['refreshToken']; // 쿠키에서 RefreshToken 읽기
-
     if (!refreshToken) {
       throw new HttpException(
         'Refresh token not found',

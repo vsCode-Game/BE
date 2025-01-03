@@ -18,7 +18,10 @@ export class GameRoomService {
     private readonly gameRoomUserRepository: Repository<GameRoomUser>,
   ) {}
 
-  // 방 생성과 동시에 유저 참가
+  async getAllRooms(): Promise<GameRoom[]> {
+    return this.gameRoomRepository.find();
+  }
+
   async createRoom(roomName: string, userId: number) {
     // 1. 유저가 이미 어떤 방에 속해 있는지 확인
     const existingMembership = await this.gameRoomUserRepository.findOne({
