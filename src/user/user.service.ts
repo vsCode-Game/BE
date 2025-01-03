@@ -45,10 +45,10 @@ export class UserService {
   }
 
   async validateUser(userEmail: string, pass: string): Promise<User | null> {
-    const user = await this.findEmailDplct(userEmail); // 이메일로 유저 검색
+    const user = await this.findEmailDplct(userEmail);
     if (user && (await bcrypt.compare(pass, user.password))) {
-      return user; // 유저가 존재하고 비밀번호가 일치하면 유저 반환
+      return user;
     }
-    return null; // 검증 실패
+    return null;
   }
 }
