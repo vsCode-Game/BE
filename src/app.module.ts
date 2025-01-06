@@ -7,6 +7,7 @@ import { UserModule } from 'src/user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
 import { GameRoomModule } from './gameRoom/gameRoom.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { GameRoomModule } from './gameRoom/gameRoom.module';
     AuthModule,
     RedisModule,
     GameRoomModule,
+    ChatModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.MYSQL_HOST || 'mysql',

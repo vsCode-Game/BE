@@ -13,5 +13,6 @@ import { RedisModule } from 'src/redis/redis.module'; // RedisModule 추가
   ],
   controllers: [GameRoomController],
   providers: [GameRoomService],
+  exports: [GameRoomService],
 })
 export class GameRoomModule {}

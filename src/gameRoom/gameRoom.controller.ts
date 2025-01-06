@@ -33,7 +33,7 @@ import { GetRoomStatusResponseDto } from './dto/getRoomStatusRespose.dto';
 export class GameRoomController {
   constructor(private readonly gameRoomService: GameRoomService) {}
 
-  @Get('all')
+  @Get()
   @ApiOperation({ summary: '전체 방 리스트 조회' })
   @ApiResponse({
     status: 200,
