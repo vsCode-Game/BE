@@ -50,15 +50,21 @@ export class ChatGateway
 
   async handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
-    const roomId = await this.gameRoomService.getRoomIdByClient(client.id);
-    const token = client.handshake.auth.token.replace('Bearer ', '');
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = Number(decoded?.userId);
+
+    // 1) userId를 client.data.userId 로 가져옴
+    const userId = client.data.userId;
+
+    // 2) DB에서 userId를 이용해 어느 방에 있었는지 찾기
+    const roomId = await this.gameRoomService.getRoomIdByClient(
+      userId.toString(),
+    );
+
     if (roomId) {
       await this.gameRoomService.leaveRoom(roomId, userId);
       this.server.to(roomId.toString()).emit('message', {
         sender: 'System',
-        message: `User ${client.id} has disconnected.`,
+        // 소켓 식별자는 client.id, 그러나 실제 "유저명"을 보여주려면 userId를 써도 됨
+        message: `User ${userId} has disconnected.`,
       });
     }
   }
@@ -114,20 +120,19 @@ export class ChatGateway
   async handleLeaveRoom(client: Socket, payload: { roomId: number }) {
     const { roomId } = payload;
 
-    const token = client.handshake.auth.token.replace('Bearer ', '');
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = Number(decoded?.userId);
+    // const token = client.handshake.auth.token.replace('Bearer ', '');
+    // const decoded: any = jwt.verify(token, process.env.JWT_SECRET);
+    // const userId = Number(decoded?.userId);
+    const userId = client.data.userId;
+
     console.log(userId, ' want to leave', roomId, 'room');
 
-    try {
+    if (roomId) {
       await this.gameRoomService.leaveRoom(roomId, userId);
       this.server.to(roomId.toString()).emit('message', {
         sender: 'System',
-        message: `User ${userId} left the room.`,
+        message: `User ${userId} has disconnected.`,
       });
-      client.leave(roomId.toString());
-    } catch (error) {
-      client.emit('error', { message: error.message });
     }
   }
 }
