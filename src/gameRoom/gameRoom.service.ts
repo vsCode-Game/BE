@@ -93,6 +93,7 @@ export class GameRoomService {
     const currentCount = await this.gameRoomUserRepository.count({
       where: { roomId },
     });
+
     if (currentCount >= room.maxPlayers) {
       throw new BadRequestException('Room is full');
     }
@@ -186,7 +187,7 @@ export class GameRoomService {
 
   async getRoomIdByClient(userId: string): Promise<number | null> {
     const user = await this.gameRoomUserRepository.findOne({
-      where: { userId: +userId },
+      where: { userId: +userId }, // 정수 변환
     });
     return user ? user.roomId : null;
   }
