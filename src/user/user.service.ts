@@ -14,6 +14,9 @@ export class UserService {
   async findEmailDplct(userEmail: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { userEmail } }) || null;
   }
+  async findUserById(userId: number): Promise<User | null> {
+    return this.userRepository.findOne({ where: { id: userId } }) || null;
+  }
 
   async findNicknameDplct(userNickname: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { userNickname } }) || null;
