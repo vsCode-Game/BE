@@ -25,6 +25,16 @@ export class GameRoomService {
   }
 
   // ─────────────────────────────────────────
+  // 게임방 유저 조회
+  // ─────────────────────────────────────────
+  async getPlayersInRoom(roomId: number): Promise<number[]> {
+    const roomMemberships = await this.gameRoomUserRepository.find({
+      where: { roomId },
+    });
+    return roomMemberships.map((membership) => membership.userId);
+  }
+
+  // ─────────────────────────────────────────
   // 방 생성 + 생성자 자동 참가
   // ─────────────────────────────────────────
   async createRoom(roomName: string, userId: number) {

@@ -25,7 +25,7 @@ export class RedisService {
     return await this.redis.get(key);
   }
 
-  async delete(key: string): Promise<void> {
+  async del(key: string): Promise<void> {
     await this.redis.del(key);
   }
 }
