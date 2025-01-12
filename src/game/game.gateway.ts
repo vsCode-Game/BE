@@ -14,6 +14,7 @@ import * as jwt from 'jsonwebtoken';
 import { RedisService } from 'src/redis/redis.service';
 import { GameRoomService } from '../gameRoom/gameRoom.service';
 import { GameService, GameState } from './game.service';
+import { UserService } from 'src/user/user.service';
 
 @WebSocketGateway({ namespace: '/game', cors: { origin: '*' } })
 export class GameGateway
@@ -29,6 +30,7 @@ export class GameGateway
     private readonly gameRoomService: GameRoomService,
     private readonly redisService: RedisService,
     private readonly gameService: GameService,
+    private readonly userService: UserService,
   ) {}
 
   afterInit(server: Server) {
@@ -76,14 +78,20 @@ export class GameGateway
   async handleJoinRoom(client: Socket, payload: { roomId: number }) {
     const { roomId } = payload;
     const userId = client.data.userId;
+    const userNickname = await this.gameService.getUserNickname(userId);
+    if (!userNickname) {
+      client.emit('error', { message: 'User not found.' });
+      return;
+    }
     const inRoom = await this.gameRoomService.isUserInRoom(userId, roomId);
     if (!inRoom) {
       await this.gameRoomService.joinRoom(roomId, userId);
     }
     client.join(roomId.toString());
-    this.server.to(roomId.toString()).emit('message', {
+    this.server.to(roomId.toString()).emit('join', {
       sender: 'System',
-      message: `User ${userId} joined the room.`,
+      userNickname,
+      message: `${userNickname}유저가 게임방에 입장했습니다.`, // TODO userNickname 추가: userNickname DB와 연결해서 가져오기
     });
   }
 
@@ -91,12 +99,17 @@ export class GameGateway
   async handleLeaveRoom(client: Socket, payload: { roomId: number }) {
     const { roomId } = payload;
     const userId = client.data.userId;
-
+    const userNickname = await this.gameService.getUserNickname(userId);
+    if (!userNickname) {
+      client.emit('error', { message: 'User not found.' });
+      return;
+    }
     if (roomId) {
       await this.gameRoomService.leaveRoom(roomId, userId);
-      this.server.to(roomId.toString()).emit('message', {
+      this.server.to(roomId.toString()).emit('leave', {
         sender: 'System',
-        message: `User ${userId} left the room.`,
+        userNickname,
+        message: `${userId}유저가 게임방을 나갔습니다.`, // TODO userNickname 추가: userNickname DB와 연결해서 가져오기
       });
     }
   }
@@ -111,6 +124,11 @@ export class GameGateway
   ) {
     const { roomId, message } = payload;
     const userId = client.data.userId;
+    const userNickname = await this.gameService.getUserNickname(userId);
+    if (!userNickname) {
+      client.emit('error', { message: 'User not found.' });
+      return;
+    }
 
     const inRoom = await this.gameRoomService.isUserInRoom(userId, roomId);
     if (!inRoom) {
@@ -119,7 +137,7 @@ export class GameGateway
     }
     this.server
       .to(roomId.toString())
-      .emit('message', { sender: userId, message });
+      .emit('message', { sender: userNickname, message });
   }
 
   // ─────────────────────────────────────────
@@ -131,9 +149,8 @@ export class GameGateway
     const userId = client.data.userId;
 
     await this.redisService.set(`room:${roomId}:user:${userId}:ready`, 'true');
-    this.server
-      .to(roomId.toString())
-      .emit('readyStatusChanged', { userId, ready: true });
+
+    this.server.to(roomId.toString()).emit('ready', { userId, ready: true });
 
     const allReady = await this.gameService.checkAllPlayersReady(roomId);
     if (!allReady) return;
@@ -158,6 +175,7 @@ export class GameGateway
         arrangementDone: false,
         blackCount: 0,
         whiteCount: 0,
+        nowDraw: null,
       };
     });
 
@@ -180,20 +198,17 @@ export class GameGateway
 
     await this.saveGameState(roomId, gameState);
 
-    this.server.to(roomId.toString()).emit('gameStarted', {
+    //& 첫번째 게임 유저
+    this.server.to(roomId.toString()).emit('gameStart', {
       starterUserId: firstPlayerId,
-      message: `Game started! First: ${firstPlayerId}`,
-    });
-    this.server.to(roomId.toString()).emit('turnStarted', {
-      turnUserId: firstPlayerId,
-      message: `It's user ${firstPlayerId}'s turn.`,
+      message: `게임을 시작합니다. 첫번째 턴은 ${firstPlayerId}의 시작입니다.`,
     });
   }
 
   // ─────────────────────────────────────────
   // (2) chooseInitialCards
   // ─────────────────────────────────────────
-  @SubscribeMessage('chooseInitialCards')
+  @SubscribeMessage('initialCards')
   async handleChooseInitialCards(
     client: Socket,
     payload: { roomId: number; blackCount: number; whiteCount: number },
@@ -201,6 +216,7 @@ export class GameGateway
     const { roomId, blackCount, whiteCount } = payload;
     const userId = client.data.userId;
 
+    // 카드 합이 4인지 검증
     if (blackCount + whiteCount !== 4) {
       client.emit('error', {
         message: 'Must pick exactly 4 cards (black+white=4).',
@@ -218,28 +234,25 @@ export class GameGateway
       return;
     }
 
+    // 사용자의 카드 선택 저장
     st.players[userId].blackCount = blackCount;
     st.players[userId].whiteCount = whiteCount;
 
     await this.saveGameState(roomId, st);
 
-    this.server.to(roomId.toString()).emit('initialCardsChosen', {
-      userId,
-      blackCount,
-      whiteCount,
-    });
-
-    // 모두 골랐나?
+    // 모든 사용자가 초기 카드를 선택했는지 확인
     const allChosen = Object.values(st.players).every(
       (p) => p.blackCount + p.whiteCount === 4,
     );
     if (!allChosen) return;
 
-    // 실제 4장씩 뽑기
+    // 실제 카드 배분
     for (const pidStr of Object.keys(st.players)) {
       const pid = Number(pidStr);
       const pState = st.players[pid];
       const arr: { color: string; num: number }[] = [];
+
+      // 흑 카드 배분
       for (let i = 0; i < pState.blackCount; i++) {
         const c = st.blackDeck.pop();
         if (!c) {
@@ -248,6 +261,8 @@ export class GameGateway
         }
         arr.push(c);
       }
+
+      // 백 카드 배분
       for (let i = 0; i < pState.whiteCount; i++) {
         const c = st.whiteDeck.pop();
         if (!c) {
@@ -257,9 +272,7 @@ export class GameGateway
         arr.push(c);
       }
 
-      // 여기서 조커가 있어도 절대 맨 뒤로 안 보낼 수도 있음
-      // 예: 간단히 compareCard로 sort하면 조커가 뒤로 감.
-      // => "사용자"가 이후 arrnageFinalHand로 옮길 수 있음
+      // 카드 정렬 (조커는 자동으로 뒤로 정렬되지 않음)
       arr.sort((a, b) => this.gameService.compareCard(a, b));
 
       pState.finalHand = arr;
@@ -271,30 +284,47 @@ export class GameGateway
 
     await this.saveGameState(roomId, st);
 
-    // 본인에게 전송
+    // 각 사용자에게 최종 패 전송
     for (const pidStr of Object.keys(st.players)) {
       const pid = Number(pidStr);
       const sockId = this.userSockets.get(pid);
       if (!sockId) continue;
 
       const arr = st.players[pid].finalHand;
-      this.server.to(sockId).emit('yourFinalHand', {
-        message: 'Your initial 4 cards assigned.',
-        finalHand: arr,
-      });
+
+      // 조커 카드 존재 여부 확인
+      const hasJoker = arr.some((x) => x.num === -1);
+      let possiblePositions: number[] = [];
+
+      if (hasJoker) {
+        // 조커를 배치할 수 있는 모든 가능한 위치 계산 (1부터 n+1까지)
+        const n = arr.length;
+        possiblePositions = Array.from({ length: n + 1 }, (_, i) => i + 1);
+
+        // 클라이언트에게 `handDeck` 이벤트 전송
+        this.server.to(sockId).emit('arrangeCard', {
+          message: `조커카드의 위치를 정해주세요.`,
+          finalHand: arr,
+          possiblePositions,
+        });
+      } else {
+        this.server.to(sockId).emit('handDeck', {
+          message: '당신이 뽑은 최종 카드덱입니다.',
+          finalHand: arr,
+        });
+        const timeout = Math.floor(Math.random() * (10000 - 5000 + 1)) + 5000;
+
+        setTimeout(() => {
+          this.checkAndRevealColorArrays(roomId);
+        }, timeout);
+      }
     }
-
-    this.server.to(roomId.toString()).emit('bothInitialCardsChosen', {
-      message: 'Both players have 4 cards now.',
-    });
-
-    this.checkAndRevealColorArrays(roomId);
   }
 
   // ─────────────────────────────────────────
   // (3) arrangeFinalHand
   // ─────────────────────────────────────────
-  @SubscribeMessage('arrangeFinalHand')
+  @SubscribeMessage('arrangeDeck')
   async handleArrangeFinalHand(
     client: Socket,
     payload: { roomId: number; newOrder: { color: string; num: number }[] },
@@ -346,9 +376,9 @@ export class GameGateway
 
     const sockId = this.userSockets.get(userId);
     if (sockId) {
-      this.server.to(sockId).emit('finalHandArranged', {
-        message: 'Your final hand arrangement updated.',
-        newOrder,
+      this.server.to(sockId).emit('handDeck', {
+        message: '정렬이 업데이트 됐습니다.',
+        finalHand: newOrder,
       });
     }
 
@@ -376,6 +406,7 @@ export class GameGateway
       return;
     }
 
+    // 카드 뽑기
     let card = null;
     if (color === 'black') {
       card = st.blackDeck.pop();
@@ -388,87 +419,84 @@ export class GameGateway
     }
 
     const pState = st.players[userId];
-    const oldArr = [...pState.finalHand];
 
-    // 조커 뽑음?
+    // **조커 카드 처리**
     if (card.num === -1) {
-      // 유저가 직접 위치를 선택
-      pState.finalHand.push(card);
-      await this.saveGameState(roomId, st);
+      const possiblePositions = this.gameService.computeAllInsertPositions(
+        pState.finalHand,
+      );
+      // 방금뽑은 카드 기억
+      st.players[userId].nowDraw = card;
+      this.saveGameState(roomId, st);
 
       const sockId = this.userSockets.get(userId);
       if (sockId) {
-        const idx = pState.finalHand.length - 1;
-        this.server.to(sockId).emit('cardDrawn', {
-          newCard: card,
-          finalHand: pState.finalHand,
-          drawnIndex: idx,
-          message: 'You drew a Joker. Place it anywhere you want.',
-        });
-        this.server.to(sockId).emit('arrangeNewlyDrawnRequested', {
-          message: 'Joker drawn. Please rearrange if needed.',
-          newlyDrawn: card,
+        this.server.to(sockId).emit('drawCard', {
+          message: `${card.color} / ${card.num}를 뽑았습니다. 삽입 가능한 위치를 정해주세요`,
+          possiblePositions, // 삽입 가능 위치 전달
           currentHand: pState.finalHand,
+          newlyDrawn: card,
+          arrangeCard: true,
         });
       }
       return;
     }
 
-    // 숫자 카드 => 조커 위치는 안 건드림
-    // 그냥 finalHand 내에서 "오름차순 인덱스" 찾되, 조커 skip?
-    // 여기서는 간단히 "이미 정렬돼있다고 가정" -> 직접 삽입 위치 계산
-    const newHand = [...pState.finalHand];
-    // 한 줄 로직: find an index i such that newCard<num
-    let insertIndex = 0;
-    for (let i = 0; i < newHand.length; i++) {
-      // 조커는 그냥 넘어감 => if(newHand[i].num===-1) { continue; }
-      if (newHand[i].num === -1) {
-        // 건너뛰고 insertIndex 계속 증가
-        insertIndex = i + 1;
-        continue;
+    // **일반 카드 처리**
+    const possiblePositions = this.gameService.computeInsertPositionForCard(
+      pState.finalHand,
+      card,
+    );
+
+    if (possiblePositions.length === 1) {
+      pState.finalHand.splice(possiblePositions[0], 0, card);
+      await this.saveGameState(roomId, st);
+
+      const sockId = this.userSockets.get(userId);
+      if (sockId) {
+        this.server.to(sockId).emit('drawCard', {
+          message: `${card.color} / ${card.num}를 뽑았습니다. 자동으로 정렬되었습니다.`,
+          finalHand: pState.finalHand,
+          newPosition: possiblePositions[0],
+          newlyDrawn: card,
+          arrangeCard: false,
+        });
       }
-      // compare
-      if (this.gameService.compareCard(card, newHand[i]) < 0) {
-        insertIndex = i;
-        break;
-      } else {
-        insertIndex = i + 1;
+      const timeout = Math.floor(Math.random() * (10000 - 5000 + 1)) + 5000;
+
+      console.log('broadCast', card);
+      setTimeout(() => {
+        // this.checkAndRevealColorArrays(roomId);
+        this.broadcastNewCardPosition(
+          roomId,
+          userId,
+          card,
+          possiblePositions[0],
+        );
+      }, timeout);
+    } else {
+      // 선택 가능한 위치가 여러 개인 경우
+      const sockId = this.userSockets.get(userId);
+      //방금 뽑은 카드 기억
+      st.players[userId].nowDraw = card;
+      this.saveGameState(roomId, st);
+
+      if (sockId) {
+        this.server.to(sockId).emit('drawCard', {
+          message: `${card.color} / ${card.num}를 뽑았습니다. 삽입 가능한 위치를 정해주세요`,
+          possiblePositions, // 삽입 가능 위치 전달
+          currentHand: pState.finalHand,
+          newlyDrawn: card,
+          arrangeCard: true,
+        });
       }
-    }
-    newHand.splice(insertIndex, 0, card);
-
-    pState.finalHand = newHand;
-    await this.saveGameState(roomId, st);
-
-    const sockId = this.userSockets.get(userId);
-    if (sockId) {
-      this.server.to(sockId).emit('cardDrawn', {
-        newCard: card,
-        finalHand: pState.finalHand,
-        drawnIndex: insertIndex,
-        message: `You drew ${card.color}${card.num} at index=${insertIndex}`,
-      });
-    }
-    this.broadcastNewCardPosition(roomId, userId, card, insertIndex);
-
-    // "조커 양옆" 범위인지?
-    // => gameService.isNearJokerRange(newHand, card)
-    const isNear = this.gameService.isNearJokerRange(newHand, card);
-    if (isNear) {
-      // "You drew a card near Joker range. You can rearrange if you want."
-      this.server.to(sockId).emit('arrangeNewlyDrawnRequested', {
-        message:
-          'You drew a card near Joker range. You can rearrange if you want.',
-        newlyDrawn: card,
-        currentHand: pState.finalHand,
-      });
     }
   }
 
   // ─────────────────────────────────────────
   // (5) 새 카드 수동 배치
   // ─────────────────────────────────────────
-  @SubscribeMessage('arrangeNewlyDrawn')
+  @SubscribeMessage('arrangeNewCard')
   async handleArrangeNewlyDrawn(
     client: Socket,
     payload: { roomId: number; newOrder: { color: string; num: number }[] },
@@ -486,7 +514,9 @@ export class GameGateway
       return;
     }
     const pState = st.players[userId];
-    const oldArr = [...pState.finalHand];
+    const oldArr = [...pState.finalHand, pState.nowDraw];
+    const lastArr = [...pState.finalHand];
+    console.log(oldArr);
 
     // 검증
     if (newOrder.length !== oldArr.length) {
@@ -514,6 +544,7 @@ export class GameGateway
     }
 
     pState.finalHand = newOrder;
+    st.players[userId].nowDraw = null;
     await this.saveGameState(roomId, st);
 
     const sockId = this.userSockets.get(userId);
@@ -525,11 +556,13 @@ export class GameGateway
     }
 
     // 상대방 알림
-    const newly = this.gameService.findNewlyAdded(oldArr, newOrder);
+    const newly = this.gameService.findNewlyAdded(lastArr, newOrder);
     if (newly) {
       const idx = newOrder.findIndex(
         (x) => x.color === newly.color && x.num === newly.num,
       );
+      console.log('broadCast', newly);
+
       this.broadcastNewCardPosition(roomId, userId, newly, idx);
     }
   }
@@ -555,9 +588,14 @@ export class GameGateway
     st.turn = next;
 
     await this.saveGameState(roomId, st);
-    this.server.to(roomId.toString()).emit('turnStarted', {
+    const userNickname = await this.gameService.getUserNickname(userId);
+    if (!userNickname) {
+      client.emit('error', { message: 'User not found.' });
+      return;
+    }
+    this.server.to(roomId.toString()).emit('nowTurn', {
       turnUserId: next,
-      message: `Now it's user ${next}'s turn.`,
+      message: ` ${userNickname}유저의 차례입니다.`,
     });
   }
 
@@ -622,12 +660,12 @@ export class GameGateway
       this.server
         .to(roomId.toString())
         .except(drawerSocket)
-        .emit('opponentNewCardRevealed', {
+        .emit('opponentCard', {
           userId: drawerId,
           color: card.color,
           index,
-          message: `User ${drawerId} placed ${card.color} at index=${index}`,
-          drawerColorArray: arr,
+          message: `${drawerId}유저가 ${card.color} 카드를 ${index + 1}번 째에 추가했습니다.`,
+          opponentCard: arr,
         });
     })();
   }

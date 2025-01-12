@@ -3,6 +3,7 @@
 import { Injectable } from '@nestjs/common';
 import { RedisService } from 'src/redis/redis.service';
 import { GameRoomService } from 'src/gameRoom/gameRoom.service';
+import { UserService } from 'src/user/user.service';
 
 /**
  * 플레이어 상태
@@ -11,10 +12,16 @@ import { GameRoomService } from 'src/gameRoom/gameRoom.service';
  * - blackCount, whiteCount: 처음에 뽑을 흑/백 카드 수
  */
 export interface PlayerState {
-  finalHand: { color: string; num: number }[];
+  finalHand: ICard[];
   arrangementDone: boolean;
   blackCount: number;
   whiteCount: number;
+  nowDraw: ICard | null;
+}
+
+export interface ICard {
+  color: string;
+  num: number;
 }
 
 /**
@@ -31,8 +38,8 @@ export interface GameState {
   players: {
     [userId: number]: PlayerState;
   };
-  blackDeck: { color: string; num: number }[];
-  whiteDeck: { color: string; num: number }[];
+  blackDeck: ICard[];
+  whiteDeck: ICard[];
 }
 
 @Injectable()
@@ -40,7 +47,13 @@ export class GameService {
   constructor(
     private readonly redisService: RedisService,
     private readonly gameRoomService: GameRoomService,
+    private readonly userService: UserService,
   ) {}
+
+  async getUserNickname(userId: number): Promise<string> {
+    const user = await this.userService.findUserById(userId);
+    return user ? user.userNickname : 'Unknown';
+  }
 
   /**
    * 방의 모든 유저가 레디했는지
@@ -223,5 +236,152 @@ export class GameService {
     const newSet = new Set(newOrder.map((c) => `${c.color}-${c.num}`));
 
     return [...oldSet].every((key) => newSet.has(key));
+  }
+  computeAllInsertPositions(
+    finalHand: { color: string; num: number }[],
+  ): number[] {
+    const positions = [];
+    for (let i = 0; i <= finalHand.length; i++) {
+      positions.push(i); // 각 카드의 양옆 포함
+    }
+    return positions;
+  }
+  computeInsertPositionForCard(
+    finalHand: { color: string; num: number }[],
+    newCard: { color: string; num: number },
+  ): number[] {
+    const positions: number[] = [];
+    const jokerIndices: number[] = [];
+
+    // Step 1: Adjust white cards by adding 0.5 to their numbers
+    const adjustedHand = finalHand.map((card) => {
+      if (card.color === 'white' && card.num !== -1) {
+        return { ...card, num: card.num + 0.5 };
+      }
+      return card;
+    });
+    const adjustedCard =
+      newCard.color === 'white'
+        ? { ...newCard, num: newCard.num + 0.5 }
+        : newCard;
+
+    // Step 2: Find all joker indices
+    adjustedHand.forEach((card, index) => {
+      if (card.num === -1) {
+        jokerIndices.push(index);
+      }
+    });
+
+    // Step 3: Find joker runs (consecutive jokers)
+    const jokerRuns: { start: number; end: number }[] = [];
+    let runStart: number | null = null;
+
+    jokerIndices.forEach((index, i) => {
+      if (runStart === null) {
+        runStart = index;
+      }
+      // If it's the last joker or the next joker is not consecutive
+      if (i === jokerIndices.length - 1 || jokerIndices[i + 1] !== index + 1) {
+        jokerRuns.push({ start: runStart, end: index });
+        runStart = null;
+      }
+    });
+
+    // Step 4: For each run, find leftNum and rightNum
+    const jokerRanges: {
+      leftNum: number | null;
+      rightNum: number | null;
+      run: { start: number; end: number };
+    }[] = [];
+
+    jokerRuns.forEach((run) => {
+      const leftIndex = run.start - 1;
+      const rightIndex = run.end + 1;
+
+      const leftNum = leftIndex >= 0 ? adjustedHand[leftIndex].num : null;
+      const rightNum =
+        rightIndex < adjustedHand.length ? adjustedHand[rightIndex].num : null;
+
+      jokerRanges.push({
+        leftNum: leftNum,
+        rightNum: rightNum,
+        run: run,
+      });
+    });
+
+    // Step 5: For each range, if adjustedCard.num falls within, add insertion positions
+    jokerRanges.forEach((range) => {
+      const { leftNum, rightNum, run } = range;
+
+      if (leftNum !== null && rightNum !== null) {
+        if (adjustedCard.num >= leftNum && adjustedCard.num <= rightNum) {
+          // Insert between leftNum and first joker
+          const leftPosition =
+            adjustedHand.findIndex((card) => card.num === leftNum) + 1;
+          if (!positions.includes(leftPosition)) positions.push(leftPosition);
+
+          // Insert between jokers
+          if (run.start < run.end) {
+            for (let pos = run.start + 1; pos <= run.end; pos++) {
+              if (!positions.includes(pos)) positions.push(pos);
+            }
+          }
+
+          // Insert between last joker and rightNum
+          const rightPosition = run.end + 1;
+          if (!positions.includes(rightPosition)) positions.push(rightPosition);
+        }
+      } else if (leftNum === null && rightNum !== null) {
+        // Insert at start if adjustedCard.num <= rightNum
+        if (adjustedCard.num <= rightNum) {
+          positions.push(0);
+          positions.push(run.start + 1);
+        }
+      } else if (leftNum !== null && rightNum === null) {
+        // Insert at end if adjustedCard.num >= leftNum
+        if (adjustedCard.num >= leftNum) {
+          const endPosition = adjustedHand.length;
+          positions.push(run.start);
+          positions.push(endPosition);
+        }
+      }
+    });
+
+    // Remove duplicates and sort
+    const uniquePositions = Array.from(new Set(positions)).sort(
+      (a, b) => a - b,
+    );
+
+    // If influenced positions exist, return them
+    if (uniquePositions.length > 0) {
+      return uniquePositions;
+    }
+
+    // Step 6: If not influenced by jokers, find single insertion position based on sorting
+    for (let i = 0; i <= adjustedHand.length; i++) {
+      const left = adjustedHand[i - 1];
+      const right = adjustedHand[i];
+
+      if (!left && right) {
+        // Insert at start
+        if (adjustedCard.num < right.num) {
+          positions.push(i);
+          break;
+        }
+      } else if (!right && left) {
+        // Insert at end
+        if (adjustedCard.num > left.num) {
+          positions.push(i);
+          break;
+        }
+      } else if (left && right) {
+        if (adjustedCard.num > left.num && adjustedCard.num < right.num) {
+          positions.push(i);
+          break;
+        }
+      }
+    }
+
+    return positions;
   }
 }
