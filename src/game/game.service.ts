@@ -11,17 +11,18 @@ import { UserService } from 'src/user/user.service';
  * - arrangementDone: 조커 재배치 완료 여부
  * - blackCount, whiteCount: 처음에 뽑을 흑/백 카드 수
  */
+
+export interface ICard {
+  color: string;
+  num: number;
+  isFlipped: boolean;
+}
 export interface PlayerState {
   finalHand: ICard[];
   arrangementDone: boolean;
   blackCount: number;
   whiteCount: number;
   nowDraw: ICard | null;
-}
-
-export interface ICard {
-  color: string;
-  num: number;
 }
 
 /**
@@ -383,5 +384,23 @@ export class GameService {
     }
 
     return positions;
+  }
+
+  async recordVictory(userId: number, roomId: number): Promise<void> {
+    // UserService에 승리 기록을 저장하는 메서드가 있다고 가정
+    await this.userService.recordWin(userId, roomId);
+  }
+
+  /**
+   * 게임 상태를 삭제합니다.
+   * @param roomId 게임 방 ID
+   */
+  async deleteGameState(roomId: number): Promise<void> {
+    await this.redisService.del(`room:${roomId}:gameState`);
+    // 필요 시 다른 관련 키도 삭제
+    const players = await this.gameRoomService.getPlayersInRoom(roomId);
+    for (const pid of players) {
+      await this.redisService.del(`room:${roomId}:user:${pid}:ready`);
+    }
   }
 }
