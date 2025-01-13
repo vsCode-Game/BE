@@ -43,6 +43,7 @@ export class UserService {
       userEmail,
       userNickname,
       password: hashedPassword,
+      wins: 0,
     });
     return this.userRepository.save(newUser);
   }
