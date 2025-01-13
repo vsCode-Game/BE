@@ -54,4 +54,13 @@ export class UserService {
     }
     return null;
   }
+
+  async recordWin(userId: number, roomId: number): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (user) {
+      user.wins += 1; // 유저 엔티티에 'wins' 필드가 있다고 가정
+      // 필요 시 게임 방 ID와 연관된 다른 정보도 저장할 수 있습니다.
+      await this.userRepository.save(user);
+    }
+  }
 }

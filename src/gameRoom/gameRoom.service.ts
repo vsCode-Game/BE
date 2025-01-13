@@ -201,4 +201,11 @@ export class GameRoomService {
     });
     return user ? user.roomId : null;
   }
+
+  async leaveAllUsers(roomId: number): Promise<void> {
+    const players = await this.getPlayersInRoom(roomId);
+    for (const pid of players) {
+      await this.leaveRoom(roomId, pid);
+    }
+  }
 }
