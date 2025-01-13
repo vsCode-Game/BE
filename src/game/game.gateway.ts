@@ -254,13 +254,20 @@ export class GameGateway
       const pid = Number(pidStr);
       const pState = st.players[pid];
       const arr: ICard[] = [];
+      let hasJoker = false;
 
       // 흑 카드 배분
       for (let i = 0; i < pState.blackCount; i++) {
         const c = st.blackDeck.pop();
-        if (!c) {
-          client.emit('error', { message: 'No more black cards left.' });
-          return;
+        if (c.num === -1) {
+          if (hasJoker) {
+            const c1 = st.blackDeck.pop();
+            st.blackDeck.push(c);
+            arr.push(c1);
+            continue;
+          } else {
+            hasJoker = true;
+          }
         }
         arr.push(c);
       }
@@ -268,18 +275,23 @@ export class GameGateway
       // 백 카드 배분
       for (let i = 0; i < pState.whiteCount; i++) {
         const c = st.whiteDeck.pop();
-        if (!c) {
-          client.emit('error', { message: 'No more white cards left.' });
-          return;
+        if (c.num === -1) {
+          if (hasJoker) {
+            const c1 = st.whiteDeck.pop();
+            st.whiteDeck.push(c);
+            arr.push(c1);
+            continue;
+          } else {
+            hasJoker = true;
+          }
         }
         arr.push(c);
       }
 
-      // 카드 정렬 (조커는 자동으로 뒤로 정렬되지 않음)
+      // 카드 정렬 (조커는 자동으로 뒤로 정렬)
       arr.sort((a, b) => this.gameService.compareCard(a, b));
 
       pState.finalHand = arr;
-      const hasJoker = arr.some((x) => x.num === -1);
       if (!hasJoker) {
         pState.arrangementDone = true;
       }
@@ -297,22 +309,27 @@ export class GameGateway
 
       // 조커 카드 존재 여부 확인
       const hasJoker = arr.some((x) => x.num === -1);
+
       let possiblePositions: number[] = [];
 
       if (hasJoker) {
         // 조커를 배치할 수 있는 모든 가능한 위치 계산 (1부터 n+1까지)
         const n = arr.length;
-        possiblePositions = Array.from({ length: n + 1 }, (_, i) => i + 1);
+        const jokerCard = arr.pop();
+        possiblePositions = Array.from({ length: n }, (_, i) => i);
 
         // 클라이언트에게 `handDeck` 이벤트 전송
         this.server.to(sockId).emit('arrangeCard', {
           message: `조커카드의 위치를 정해주세요.`,
+          arrangeCard: true,
           finalHand: arr,
+          jokerCard,
           possiblePositions,
         });
       } else {
         this.server.to(sockId).emit('handDeck', {
           message: '당신이 뽑은 최종 카드덱입니다.',
+          arrangeCard: false,
           finalHand: arr,
         });
         const timeout = Math.floor(Math.random() * (10000 - 5000 + 1)) + 5000;
