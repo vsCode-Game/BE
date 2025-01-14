@@ -20,6 +20,7 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 
 // DTO import
@@ -63,6 +64,7 @@ export class GameRoomController {
   @UseGuards(RedisAuthGuard) // 컨트롤러 전체에 Guard 적용
   @Post('create')
   @ApiOperation({ summary: '방 생성과 동시에 참가' })
+  @ApiBearerAuth('access-token') // Swagger에서 Bearer Token 헤더를 입력할 수 있도록 표시
   @ApiBody({ type: CreateGameRoomDto })
   @ApiResponse({
     status: 201,
@@ -92,6 +94,7 @@ export class GameRoomController {
   @UseGuards(RedisAuthGuard) // 컨트롤러 전체에 Guard 적용
   @Post('join/:roomId')
   @ApiOperation({ summary: '방 참가' })
+  @ApiBearerAuth('access-token') // Swagger에서 Bearer Token 헤더를 입력할 수 있도록 표시
   @ApiParam({ name: 'roomId', type: Number, description: '참가할 게임 방 ID' })
   @ApiResponse({
     status: 201,
@@ -135,6 +138,7 @@ export class GameRoomController {
   @UseGuards(RedisAuthGuard) // 컨트롤러 전체에 Guard 적용
   @Delete('leave/:roomId')
   @ApiOperation({ summary: '방 나가기' })
+  @ApiBearerAuth('access-token') // Swagger에서 Bearer Token 헤더를 입력할 수 있도록 표시
   @ApiParam({ name: 'roomId', type: Number, description: '나갈 게임 방 ID' })
   @ApiResponse({
     status: 200,
@@ -179,6 +183,7 @@ export class GameRoomController {
 
   @Get(':roomId')
   @ApiOperation({ summary: '방 상태 조회' })
+  @ApiBearerAuth('access-token') // Swagger에서 Bearer Token 헤더를 입력할 수 있도록 표시
   @ApiParam({ name: 'roomId', type: Number, description: '조회할 게임 방 ID' })
   @ApiResponse({
     status: 200,

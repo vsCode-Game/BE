@@ -104,7 +104,7 @@ export class AuthController {
     summary: '프로필 조회(Protected)',
     description: '로그인이 필요한 프로필 조회 API',
   })
-  @ApiBearerAuth() // Swagger에서 Bearer Token 헤더를 입력할 수 있도록 표시
+  @ApiBearerAuth('access-token') // Swagger에서 Bearer Token 헤더를 입력할 수 있도록 표시
   @ApiResponse({
     status: 200,
     description: '정상적으로 접근한 경우',
