@@ -15,7 +15,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:5173',
       'http://localhost:3000',
-      'https://api.davincicodegame.store',
+      'https://davincicodegame.store',
     ],
     credentials: true,
   });
@@ -32,6 +32,7 @@ async function bootstrap() {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
+        in: 'header',
       },
       'access-token',
     )
