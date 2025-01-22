@@ -85,6 +85,7 @@ export class GameRoomController {
   async createRoom(@Body() body: CreateGameRoomDto, @Req() req: any) {
     try {
       const userId = req.user.userId; // JWT에서 추출한 userId
+
       return await this.gameRoomService.createRoom(body.roomName, userId);
     } catch (error) {
       throw new BadRequestException(error.message);

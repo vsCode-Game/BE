@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GameRoom } from './entities/gameRoom.entity';
 import { GameRoomUser } from './entities/gameRoomUser.entity';
+import { UserService } from 'src/user/user.service';
 
 @Injectable()
 export class GameRoomService {
@@ -15,6 +16,7 @@ export class GameRoomService {
     private readonly gameRoomRepository: Repository<GameRoom>,
     @InjectRepository(GameRoomUser)
     private readonly gameRoomUserRepository: Repository<GameRoomUser>,
+    private readonly userService: UserService,
   ) {}
 
   // ─────────────────────────────────────────
@@ -176,13 +178,23 @@ export class GameRoomService {
 
     // DB에서 인원 목록 조회
     const users = await this.gameRoomUserRepository.find({ where: { roomId } });
+    console.log(users);
+    const usersWithNicknames = await Promise.all(
+      users.map(async (user) => {
+        const userData = await this.userService.findUserById(user.userId);
+        return {
+          ...user,
+          userNickname: userData.userNickname,
+        };
+      }),
+    );
 
     // (선택) 혹시 최신 인원수를 다시 덮어씌우고 싶다면:
     // const count = await this.gameRoomUserRepository.count({ where: { roomId } });
     // room.currentCount = count;
     // await this.gameRoomRepository.save(room);
 
-    return { room, users };
+    return { room, users: usersWithNicknames };
   }
 
   // ─────────────────────────────────────────

@@ -62,13 +62,13 @@ export class GameGateway
     );
 
     const userNickname = await this.gameService.getUserNickname(userId);
-    if (roomId) {
-      await this.gameRoomService.leaveRoom(roomId, userId);
-      this.server.to(roomId.toString()).emit('message', {
-        sender: 'System',
-        message: `${userNickname} 유저가 퇴장했습니다.`,
-      });
-    }
+    // if (roomId) {
+    //   await this.gameRoomService.leaveRoom(roomId, userId);
+    //   this.server.to(roomId.toString()).emit('message', {
+    //     sender: 'System',
+    //     message: `${userNickname} 유저가 퇴장했습니다.`,
+    //   });
+    // }
   }
 
   // ─────────────────────────────────────────

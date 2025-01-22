@@ -1,6 +1,6 @@
 // dto/gameRoomUser.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsDate } from 'class-validator';
+import { IsNumber, IsDate, IsString } from 'class-validator';
 
 export class GameRoomUserDto {
   @ApiProperty({ example: 1, description: 'GameRoomUser 테이블 PK' })
