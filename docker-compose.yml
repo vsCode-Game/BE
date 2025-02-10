@@ -1,0 +1,76 @@
+services:
+  app:
+    image: nestjs-app:latest
+    env_file:
+      - .env
+    ports:
+      - '8080:3000'
+    volumes:
+      - ./src:/usr/src/app/src
+      - /usr/src/app/node_modules
+    environment:
+      PORT: ${PORT}
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    networks:
+      - my_network
+    command: ['npm', 'run', 'start:dev']
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    volumes:
+      - mysql-data:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      LC_ALL: C.UTF-8
+      TZ: Asia/Seoul
+    networks:
+      - my_network
+    ports:
+      - '3306:3306'
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - '6379:${REDIS_PORT}'
+    networks:
+      - my_network
+    command:
+      - redis-server
+      - --requirepass ${REDIS_PASSWORD}
+      - --port ${REDIS_PORT}
+      - --appendonly ${REDIS_APPENDONLY}
+    labels:
+      - 'name=redis'
+      - 'mode=standalone'
+    volumes:
+      - redis-data:/data
+    restart: always
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql-data:
+  redis-data:
+
+networks:
+  my_network:
