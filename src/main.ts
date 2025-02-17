@@ -19,6 +19,8 @@ async function bootstrap() {
       'https://www.davincicodegame.store',
     ],
     credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe());
