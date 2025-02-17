@@ -16,6 +16,7 @@ async function bootstrap() {
       'http://localhost:5173',
       'http://localhost:3000',
       'https://davincicodegame.store',
+      'https://www.davincicodegame.store',
     ],
     credentials: true,
   });
